@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Lightbulb, Calendar, Download } from "lucide-react";
+import { Lightbulb, Download } from "lucide-react";
 
 interface Assignment {
   id: string;
