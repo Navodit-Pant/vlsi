@@ -38,21 +38,24 @@ export default function Page() {
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
   const [user, setUser] = useState<GoogleUser | null>(null);
 
-  // Memoize Cryptr to avoid re-creation
   const cryptr = useMemo(
-    () => new Cryptr(process.env.NEXT_PUBLIC_SECRET_KEY || "key"),
+    () => new Cryptr(process.env.NEXT_PUBLIC_SECRET_KEY || "fallback_key"),
     []
   );
 
   const backToLogin = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("allowedUsersList");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("user");
+      localStorage.removeItem("allowedUsersList");
+    }
     router.replace("/");
   };
 
   useEffect(() => {
     const fetchUserVerification = async () => {
       try {
+        if (typeof window === "undefined") return;
+
         const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
         if (!storedUser?.email) {
           router.replace("/");
@@ -61,6 +64,7 @@ export default function Page() {
 
         setUser(storedUser);
 
+        const newEmail = "vlsicot@gmail.com";
         let allowedEmails: string[] | null = null;
         const storedAllowedUsers = localStorage.getItem("allowedUsersList");
 
@@ -68,7 +72,7 @@ export default function Page() {
           try {
             allowedEmails = JSON.parse(cryptr.decrypt(storedAllowedUsers));
           } catch {
-            localStorage.removeItem("allowedUsersList"); // Handle corrupted data
+            localStorage.removeItem("allowedUsersList"); // corrupted data
           }
         }
 
@@ -79,6 +83,11 @@ export default function Page() {
             ? docSnap.data()?.allowedUsers || []
             : [];
 
+          // 🔐 Add vlsicot@gmail.com if not already there
+          // if (!allowedEmails.includes(newEmail)) {
+          //   allowedEmails.push(newEmail);
+          // }
+
           localStorage.setItem(
             "allowedUsersList",
             cryptr.encrypt(JSON.stringify(allowedEmails))
@@ -86,6 +95,15 @@ export default function Page() {
         }
 
         if (allowedEmails) {
+          // Ensure the new email is present even if coming from localStorage
+          if (!allowedEmails.includes(newEmail)) {
+            allowedEmails.push(newEmail);
+            localStorage.setItem(
+              "allowedUsersList",
+              cryptr.encrypt(JSON.stringify(allowedEmails))
+            );
+          }
+
           setIsVerified(allowedEmails.includes(storedUser.email));
         }
       } catch (error) {
@@ -180,7 +198,10 @@ export default function Page() {
         <Link href="/faqs" className="flex items-center gap-2 hover:underline">
           <HelpCircle size={20} /> FAQ
         </Link>
-        <Link href="https://youtube.com/playlist?list=PLAHCLYSq3g_iqVrCNHigtGFH-QWdFdEA5&si=A7RotX4WpZuJvoRs" className="flex items-center gap-2 hover:underline">
+        <Link
+          href="https://youtube.com/playlist?list=PLAHCLYSq3g_iqVrCNHigtGFH-QWdFdEA5&si=A7RotX4WpZuJvoRs"
+          className="flex items-center gap-2 hover:underline"
+        >
           <File size={20} /> External Videos
         </Link>
       </div>
